@@ -76,3 +76,4 @@ gcc-arm-none-eabi*
 *.jdebug
 *.code-workspace
 /espruino_embedded.*
+/builds
