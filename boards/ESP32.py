@@ -12,6 +12,23 @@
 # Buttons, and other in-built peripherals are. It is used to build documentation as well
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
+#
+# Flashing:
+"""
+esptool.py erase_flash && esptool.py                \
+        --port /dev/ttyUSB0                         \
+        --baud 1500000                              \
+        --before default_reset                      \
+        --after hard_reset write_flash              \
+        -z                                          \
+        --flash_mode dio                            \
+        --flash_freq 80m                            \
+        --flash_size detect                         \
+        0x1000 bootloader.bin                       \
+        0x8000 partitions_espruino.bin              \
+        0xe000 /home/tristan/snap/arduino/41/.arduino15/packages/esp32/hardware/esp32/1.0.4/tools/partitions/boot_app0.bin \
+        0x10000 espruino_2v06.633_esp32.bin
+"""
 
 
 
@@ -65,7 +82,7 @@ info = {
      'NEOPIXEL',
      'FILESYSTEM',
      'FLASHFS',
-     'BLUETOOTH'	 
+     'BLUETOOTH'
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
