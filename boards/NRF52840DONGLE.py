@@ -7,39 +7,49 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# also see http://forum.espruino.com/comments/14930906/
+# ----------------------------------------------------------------------------------------
+# This file contains information for a specific board - the available pins, and where LEDs,
+# Buttons, and other in-built peripherals are. It is used to build documentation as well
+# as various source and header files for Espruino.
+# ----------------------------------------------------------------------------------------
+# also see https://gist.github.com/fanoush/c081c1d7c8eb2a4562785bbb684f661e
 #
 # # BUILD it:
 # > make clean && BOARD=NRF52840DONGLE RELEASE=1 make
 
+
 import pinutils;
 
-
 info = {
- 'name' : "nRF52840 Dongle",
- 'link' :  [ "https://www.nordicsemi.com/Software-and-Tools/Development-Kits/nRF52840-Dongle" ],
- 'espruino_page_link' : 'nRF52840DONGLE',
-  # This is the PCA10059
- 'default_console' : "EV_SERIAL1",
- 'default_console_tx' : "D15",
- 'default_console_rx' : "D13",
- 'default_console_baudrate' : "9600",
- 'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'name' : "NRF52840 Dongle",
+ 'link' :  [ "https://www.nordicsemi.com/Software-and-tools/Development-Kits/nRF52840-Dongle" ],
+# 'default_console' : "EV_BLUETOOTH",
+ 'default_console' : "EV_USBSERIAL",
+ 'variables' : 14000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
- 'binary_name' : 'espruino_%v_nrf52840_dongle.hex',
+ 'binary_name' : 'espruino_%v_52840dongle.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
-     'NET',
+#     'NET',
      'GRAPHICS',
-     'NEOPIXEL',
+#     'NFC',
+#     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES += -DBOARD_PCA10059 -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', #59 77 131 104
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0',#2bf0 0x3058#37f8 0x3720
+     'DEFINES += -DBLUETOOTH_NAME_PREFIX=\'"Dongle"\'',
+     'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6', #S140 6.0.0
+     'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
      'DEFINES += -DNRF_USB=1 -DUSB',
-     'DEFINES += -DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
-     'DEFINES += -DBLUETOOTH_NAME_PREFIX=\'"PCA10059"\'',
+#     'DEFINES += -DUART1_ENABLED=1 -DRNG_CONFIG_POOL_SIZE=64',
+#     'DEFINES+=-DNEOPIXEL_SCK_PIN=9 -DNEOPIXEL_LRCK_PIN=10',
+     'DEFINES += -DNO_DUMP_HARDWARE_INITIALISATION',
+     'DEFINES += -DNRF_BL_DFU_INSECURE=1',
      'NRF_SDK15=1'
    ]
  }
@@ -53,121 +63,63 @@ chip = {
   'ram' : 256,
   'flash' : 1024,
   'speed' : 64,
-  'usart' : 2,
-  'spi' : 3,
+  'usart' : 1, #2
+  'spi' : 1, #3
   'i2c' : 2,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((223 - 10) * 4096), # Dongle - default USB bootloader starts at 0xE0000
+    'address' : ((0xe0 - 2 - 96) * 4096), # Bootloader at 0xE0000
     'page_size' : 4096,
-    'pages' : 10,
-    'flash_available' : 1024 - ((38 + 30 + 2 + 10)*4) # Softdevice 140 uses 38 pages of flash, USB bootloader 30, FS 2, code 10. Each page is 4 kb.
+    'pages' : 96,
+    'flash_available' : 1024 - ((0x26 + 0x20 + 2 + 96)*4) # Softdevice uses 38 pages of flash (0x26000/0x100), bootloader 0x100-0xe0=0x20, FS 2, code 96. Each page is 4 kb.
   },
 };
-# STORAGE: 966656 (page 236) -> 1007616 (page 246)
-#       flashmap: 0xec000 == 966656 - 0xed854 == 972884 6228byte
-# CODE: 155648 -> 617792 (462144 bytes)
-
-
-# dongle bootloader: 0xe0000 == 917504 -> 0xFE000 == 1040384
-# dongle FLASH_SIZE=0xdf000 913408 to make sure that there is room for the bootloader at the end of the flash.
-#  ==> page 223 must be the end of the stored code area
 
 devices = {
-  'BTN1' : { 'pin' : 'D38' }, # the button is at P1.06
-  'LED1' : { 'pin' : 'D6' },  # green LED
-  'LED2' : { 'pin' : 'D8' },   # RGB LED / red   P0.08
-  'LED3' : { 'pin' : 'D41' },  # RGB LED / green P1.09
-  'LED4' : { 'pin' : 'D12' },  # RGB LED / blue  P0.12
-  'RX_PIN_NUMBER' : { 'pin' : 'D13'},
-  'TX_PIN_NUMBER' : { 'pin' : 'D15'},
+  'BTN1' : { 'pin' : 'D38', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+#RGB LED
+  'LED1' : { 'pin' : 'D6' }, # Pin negated in software
+  'LED2' : { 'pin' : 'D8' }, # Pin negated in software
+  'LED3' : { 'pin' : 'D41' }, # Pin negated in software
+  'LED4' : { 'pin' : 'D12' }, # Pin negated in software
+#  'RX_PIN_NUMBER' : { 'pin' : 'D8'},
+#  'TX_PIN_NUMBER' : { 'pin' : 'D6'},
+#  'CTS_PIN_NUMBER' : { 'pin' : 'D7'},
+#  'RTS_PIN_NUMBER' : { 'pin' : 'D5'},
+
 };
 
 # left-right, or top-bottom order
-# pins on "top" edge:
-# 0.10 PD10
-# 0.09 PD9
-# 1.00 PD32
-# 0.24 PD24
-# 0.22 PD22
-# 0.20 PD20
-# 0.17 PD17
-# 0.15 PD15
-# 0.13 PD13
-# pins on "bottom" edge:
-# 1.10 PD42
-# 1.13 PD45
-# 1.15 PD47
-# 0.02 PD2
-# 0.29 PD29
-# 0.31 PD31
-# test points on the bottom of board:
-# 1.01 PD33
-# 1.02 PD32
-# 1.04 PD36
-# 1.07 PD39
-# 1.11 PD43
-# 0.04 PD4
-# 0.11 PD11
-# 0.14 PD14
-# 0.26 PD26
+board = {
+};
 
 def get_pins():
-  pins = []
-  pinutils.findpin(pins, "PD0", False)["functions"]["XL1"]=0;
-  pinutils.findpin(pins, "PD1", False)["functions"]["XL2"]=0;
-  pinutils.findpin(pins, "PD2", False)["functions"]["ADC1_IN0"]=0;
-  # 0.3 not connected pin
-  pinutils.findpin(pins, "PD4", False)["functions"]["ADC1_IN2"]=0;
-  # 0.5 not connected pin
-  pinutils.findpin(pins, "PD6", False)["functions"]["NEGATED"]=0; # LED1 (G)
-  # 0.7 not connected pin
-  pinutils.findpin(pins, "PD8", False)["functions"]["NEGATED"]=0; # RGB LED / red  P0.08
-  pinutils.findpin(pins, "PD9", False)
-  pinutils.findpin(pins, "PD10", False)
-  pinutils.findpin(pins, "PD11", False)
-  pinutils.findpin(pins, "PD12", False)["functions"]["NEGATED"]=0; # RGB LED / blue  P0.12
-  pinutils.findpin(pins, "PD13", False)["functions"]["RXD"]=0;
-  pinutils.findpin(pins, "PD14", False)
-  pinutils.findpin(pins, "PD15", False)["functions"]["TXD"]=0;
-  # 0.16 not connected pin
-  pinutils.findpin(pins, "PD17", False)
-  pinutils.findpin(pins, "PD18", False)
-  # SW2 is also connected to P0.19, P0.21, P0.23, and P0.25. This is done to simplify PCB routing. These
-  # GPIOs should not be used and should be left as input with no pull or be disconnected by firmware.
-  # pinutils.findpin(pins, "PD19", False)
-  pinutils.findpin(pins, "PD20", False)
-  # pinutils.findpin(pins, "PD21", False)
-  pinutils.findpin(pins, "PD22", False)
-  # pinutils.findpin(pins, "PD23", False)
-  pinutils.findpin(pins, "PD24", False)
-  # pinutils.findpin(pins, "PD25", False)
-  pinutils.findpin(pins, "PD26", False)
-  # 0.27 not connected pin
-  # 0.28 not connected pin
-  pinutils.findpin(pins, "PD29", False)["functions"]["ADC1_IN5"]=0;
-  # 0.30 not connected pin
-  pinutils.findpin(pins, "PD31", False)["functions"]["ADC1_IN7"]=0;
-  pinutils.findpin(pins, "PD32", False)
-  pinutils.findpin(pins, "PD33", False)
-  pinutils.findpin(pins, "PD34", False)
-  # 1.3 not connected pin
-  pinutils.findpin(pins, "PD36", False)
-  # 1.5 not connected pin
-  pinutils.findpin(pins, "PD38", False)["functions"]["NEGATED"]=0; # the button is at P1.06
-  pinutils.findpin(pins, "PD39", False)
-  # 1.8 not connected pin
-  pinutils.findpin(pins, "PD41", False)["functions"]["NEGATED"]=0; # RGB LED / green P1.09
-  pinutils.findpin(pins, "PD42", False)
-  pinutils.findpin(pins, "PD43", False)
-  # 1.12 not connected pin
-  pinutils.findpin(pins, "PD45", False)
-  # 1.14 not connected pin
-  pinutils.findpin(pins, "PD47", False)
+  pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.
+  pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
+  pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
+#  pinutils.findpin(pins, "PD5", True)["functions"]["RTS"]=0;
+#  pinutils.findpin(pins, "PD6", True)["functions"]["TXD"]=0;
+#  pinutils.findpin(pins, "PD7", True)["functions"]["CTS"]=0;
+#  pinutils.findpin(pins, "PD8", True)["functions"]["RXD"]=0;
+  pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
+  pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  # Make buttons and LEDs negated
+  pinutils.findpin(pins, "PD6", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD8", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD12", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD38", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD41", True)["functions"]["NEGATED"]=0;
 
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
-  print('pins:', pins)
   return pins
