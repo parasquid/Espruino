@@ -22,29 +22,25 @@
 #   docker cp container_name:espruino/espruino_2v00_pico_1r3.bin ./
 #
 
-FROM ubuntu:xenial
+FROM python:3
 
 WORKDIR /espruino
 
 # Workaround add some stuff that the provision script uses
 # in here so it doesn't have to use sudo
 RUN apt-get update
-RUN apt-get install -qq -y curl build-essential git unzip python wget libncurses-dev flex bison gperf python-pip python-setuptools cmake ninja-build ccache libffi-dev libssl-dev nano
-RUN pip install --upgrade pip
+RUN apt-get install -qq -y python3-pip
 RUN pip install pyserial
 RUN pip install nrfutil
-RUN pip install future
-RUN pip install cryptography
 
 COPY ./scripts /espruino/scripts
 COPY ./targetlibs /espruino/targetlibs
+COPY ./boards /espruino/boards
 
 # This ensures ALL dependencies are installed beforehand
-RUN echo "cd /espruino && source scripts/provision.sh ALL" >> /root/.bashrc
 RUN bash -c "source scripts/provision.sh ALL"
 
 COPY . /espruino
 
 ENV RELEASE 1
 CMD ["bash", "-c", "source scripts/provision.sh ALL && make"]
-
